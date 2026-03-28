@@ -11,7 +11,7 @@ const db = new sqlite3.Database(':memory:');
 app.use(bodyParser.urlencoded({ extended: true }));
 app.set('view engine', 'ejs');
 
-// Criar tabela e inserir dados vulneráveis
+// Criar tabela e inserir dados
 db.serialize(() => {
     db.run("CREATE TABLE users (id INTEGER PRIMARY KEY, username TEXT, password TEXT)");
     db.run("INSERT INTO users (username, password) VALUES ('admin', 'admin123')");
@@ -20,25 +20,30 @@ db.serialize(() => {
     db.run("INSERT INTO flags (flag) VALUES ('VULCOM{SQLi_Exploit_Success}')");
 });
 
-// Rota de login com SQL Injection
 app.get('/', (req, res) => {
     res.render('login');
 });
 
 app.post('/login', (req, res) => {
     const { username, password } = req.body;
-    
-    // CONSULTA SQL VULNERÁVEL 🚨
-    const query = `SELECT * FROM users WHERE username = '${username}' AND password = '${password}'`;
-    
-    db.all(query, [], (err, rows) => {
+
+    if (!username || !password) {
+        return res.send('Preencha usuário e senha');
+    }
+
+    const query = `SELECT * FROM users WHERE username = ? AND password = ?`;
+
+    db.all(query, [username, password], (err, rows) => {
         if (err) {
+            console.error('ERRO:', err.message);
             return res.send('Erro no servidor');
         }
+
+        console.log('CONSULTA: ', query);
+        console.log('RESULTADO:', rows);
+
         if (rows.length > 0) {
-            console.log('CONSULTA: ', query);
-            console.log('RESULTADO:', rows);
-            return res.send(`Bem-vindo, ${username}! <br> Flag: VULCOM{SQLi_Exploit_Success}`);
+            return res.send(`Bem-vindo, ${username}!`);
         } else {
             return res.send('Login falhou!');
         }
